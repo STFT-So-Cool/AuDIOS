@@ -1,9 +1,4 @@
-/**
- * AudioPulse Studio - Main Application Controller
- */
-
 document.addEventListener('DOMContentLoaded', () => {
-  // 0. Verify User Authentication with MongoDB Backend
   const userProfileBar = document.getElementById('userProfileBar');
   const loggedInUsername = document.getElementById('loggedInUsername');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -18,9 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userProfileBar.style.display = 'flex';
       }
     })
-    .catch(() => {
-      // In standalone / offline mode, keep accessible
-    });
+    .catch(() => {});
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
@@ -31,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 1. Initialize Audio Engine & Visualizer
   const audioManager = new AudioManager();
 
   const waveformCanvas = document.getElementById('waveformCanvas');
@@ -55,19 +47,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 2. DOM Elements
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
   const browseBtn = document.getElementById('browseBtn');
 
-  // Sample Buttons
   const sampleChirp = document.getElementById('sampleChirp');
   const sampleChord = document.getElementById('sampleChord');
   const sampleDTMF = document.getElementById('sampleDTMF');
   const samplePercussion = document.getElementById('samplePercussion');
   const micRecordBtn = document.getElementById('micRecordBtn');
 
-  // Player controls
   const playPauseBtn = document.getElementById('playPauseBtn');
   const playIcon = document.getElementById('playIcon');
   const pauseIcon = document.getElementById('pauseIcon');
@@ -79,12 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const muteIcon = document.getElementById('muteIcon');
   const playbackSpeed = document.getElementById('playbackSpeed');
 
-  // Zoom controls
   const zoomInBtn = document.getElementById('zoomInBtn');
   const zoomOutBtn = document.getElementById('zoomOutBtn');
   const fitZoomBtn = document.getElementById('fitZoomBtn');
 
-  // Analysis settings
   const channelModeSelect = document.getElementById('channelModeSelect');
   const waveformThemeSelect = document.getElementById('waveformThemeSelect');
   const colormapSelect = document.getElementById('colormapSelect');
@@ -96,17 +83,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const minDbVal = document.getElementById('minDbVal');
   const maxDbVal = document.getElementById('maxDbVal');
 
-  // Progress overlay
   const progressOverlay = document.getElementById('progressOverlay');
   const progressBar = document.getElementById('progressBar');
   const progressText = document.getElementById('progressText');
 
-  // Export buttons
   const exportWaveformBtn = document.getElementById('exportWaveformBtn');
   const exportSpectrogramBtn = document.getElementById('exportSpectrogramBtn');
   const exportReportBtn = document.getElementById('exportReportBtn');
 
-  // Metadata tags
   const metaContainer = document.getElementById('metaContainer');
   const metaFileName = document.getElementById('metaFileName');
   const metaDuration = document.getElementById('metaDuration');
@@ -116,14 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const metaMin = document.getElementById('metaMin');
   const metaRms = document.getElementById('metaRms');
 
-  // State
   let isRecordingMic = false;
   let mediaRecorder = null;
   let micAudioChunks = [];
-
-  /* =========================================================================
-   * FILE UPLOAD & DRAG/DROP
-   * ========================================================================= */
 
   browseBtn.addEventListener('click', () => fileInput.click());
 
@@ -163,34 +142,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dropZone.addEventListener('drop', async e => {
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('audio/')) {
-      await loadFile(file);
-    } else if (file) {
-      // Even if mime-type is generic, try loading (e.g. .wav / .mp3)
+    if (file) {
       await loadFile(file);
     }
   });
 
   async function loadFile(file) {
-    showProgress('Loading & decoding audio file...', 0);
+    showProgress('Loading audio file...', 0);
     try {
-      showProgress('Decoding audio stream...', 0.3);
+      showProgress('Decoding audio...', 0.3);
       await audioManager.loadFromFile(file);
       await processAndDisplayAudio();
     } catch (err) {
       console.error(err);
-      alert(`Could not load audio file "${file.name}". Please ensure it is a valid audio format (MP3, WAV, OGG, FLAC, AAC).`);
+      alert(`Could not load audio file "${file.name}".`);
     } finally {
       hideProgress();
     }
   }
 
-  /* =========================================================================
-   * SYNTHESIZED SAMPLES
-   * ========================================================================= */
-
   sampleChirp.addEventListener('click', async () => {
-    showProgress('Generating Logarithmic Sine Sweep (25Hz - 18kHz)...', 0.2);
+    showProgress('Generating sweep...', 0.2);
     try {
       await audioManager.generateChirp();
       await processAndDisplayAudio();
@@ -203,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   sampleChord.addEventListener('click', async () => {
-    showProgress('Synthesizing Harmonic Chord (C-Major Overtones)...', 0.2);
+    showProgress('Synthesizing chord...', 0.2);
     try {
       await audioManager.generateMusicalChord();
       await processAndDisplayAudio();
@@ -216,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   sampleDTMF.addEventListener('click', async () => {
-    showProgress('Generating DTMF Dial Tones (1-3-5-7-9-0)...', 0.2);
+    showProgress('Generating tones...', 0.2);
     try {
       await audioManager.generateDTMF();
       await processAndDisplayAudio();
@@ -229,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   samplePercussion.addEventListener('click', async () => {
-    showProgress('Synthesizing Drum Pattern & Transients...', 0.2);
+    showProgress('Synthesizing rhythm...', 0.2);
     try {
       await audioManager.generatePercussion();
       await processAndDisplayAudio();
@@ -240,10 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
       hideProgress();
     }
   });
-
-  /* =========================================================================
-   * MICROPHONE RECORDING
-   * ========================================================================= */
 
   micRecordBtn.addEventListener('click', async () => {
     if (!isRecordingMic) {
@@ -259,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(micAudioChunks, { type: 'audio/webm' });
           stream.getTracks().forEach(t => t.stop());
-          showProgress('Decoding microphone recording...', 0.3);
+          showProgress('Decoding microphone input...', 0.3);
           const file = new File([audioBlob], 'Microphone_Recording.webm', { type: 'audio/webm' });
           await audioManager.loadFromFile(file);
           await processAndDisplayAudio();
@@ -276,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
           Stop Recording...
         `;
       } catch (err) {
-        alert('Microphone access denied or not supported in this browser.');
+        alert('Microphone access denied or not supported.');
       }
     } else {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -295,15 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* =========================================================================
-   * AUDIO PROCESSING & METADATA DISPLAY
-   * ========================================================================= */
-
   async function processAndDisplayAudio() {
     const meta = audioManager.metadata;
     if (!meta) return;
 
-    // Display metadata banner
     metaContainer.classList.remove('hidden');
     metaFileName.textContent = meta.name;
     metaDuration.textContent = `${meta.duration.toFixed(2)}s`;
@@ -316,18 +279,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     metaRms.textContent = `${meta.rmsDb.toFixed(1)} dBFS`;
 
-    // Disable stereo option if audio is mono
     if (meta.numberOfChannels === 1 && channelModeSelect.value === 'stereo') {
       channelModeSelect.value = 'mono';
       visualizer.channelMode = 'mono';
     }
 
-    // Trigger visualizer pipeline with progress callback
     await visualizer.loadAudio(ratio => {
-      showProgress(`Computing Short-Time Fourier Transform (${Math.round(ratio * 100)}%)...`, ratio);
+      showProgress(`Computing STFT (${Math.round(ratio * 100)}%)...`, ratio);
     });
 
-    // Reset playback UI
     updatePlayPauseState(false);
     updateTimeDisplay(0);
     enableControls(true);
@@ -344,7 +304,6 @@ document.addEventListener('DOMContentLoaded', () => {
     exportSpectrogramBtn.disabled = !enabled;
     exportReportBtn.disabled = !enabled;
 
-    // Per-panel waveform zoom buttons
     const wfZoomInBtn = document.getElementById('wfZoomInBtn');
     const wfZoomOutBtn = document.getElementById('wfZoomOutBtn');
     const wfFitBtn = document.getElementById('wfFitBtn');
@@ -352,7 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (wfZoomOutBtn) wfZoomOutBtn.disabled = !enabled;
     if (wfFitBtn) wfFitBtn.disabled = !enabled;
 
-    // Per-panel spectrogram zoom buttons
     const spZoomInBtn = document.getElementById('spZoomInBtn');
     const spZoomOutBtn = document.getElementById('spZoomOutBtn');
     const spFitBtn = document.getElementById('spFitBtn');
@@ -360,10 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (spZoomOutBtn) spZoomOutBtn.disabled = !enabled;
     if (spFitBtn) spFitBtn.disabled = !enabled;
   }
-
-  /* =========================================================================
-   * PLAYBACK CONTROLS
-   * ========================================================================= */
 
   playPauseBtn.addEventListener('click', () => {
     if (!audioManager.audioBuffer) return;
@@ -454,15 +408,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${mins}:${secs.padStart(5, '0')}`;
   }
 
-  /* =========================================================================
-   * ZOOM & VIEWPORT BUTTONS
-   * ========================================================================= */
-
   zoomInBtn.addEventListener('click', () => visualizer.zoom(0.7, 0.5));
   zoomOutBtn.addEventListener('click', () => visualizer.zoom(1.4, 0.5));
   fitZoomBtn.addEventListener('click', () => visualizer.resetZoom());
 
-  // Per-panel waveform zoom buttons
   const wfZoomInBtn = document.getElementById('wfZoomInBtn');
   const wfZoomOutBtn = document.getElementById('wfZoomOutBtn');
   const wfFitBtn = document.getElementById('wfFitBtn');
@@ -470,17 +419,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (wfZoomOutBtn) wfZoomOutBtn.addEventListener('click', () => visualizer.zoom(1.4, 0.5, 'waveform'));
   if (wfFitBtn) wfFitBtn.addEventListener('click', () => visualizer.resetZoom('waveform'));
 
-  // Per-panel spectrogram zoom buttons
   const spZoomInBtn = document.getElementById('spZoomInBtn');
   const spZoomOutBtn = document.getElementById('spZoomOutBtn');
   const spFitBtn = document.getElementById('spFitBtn');
   if (spZoomInBtn) spZoomInBtn.addEventListener('click', () => visualizer.zoom(0.7, 0.5, 'spectrogram'));
   if (spZoomOutBtn) spZoomOutBtn.addEventListener('click', () => visualizer.zoom(1.4, 0.5, 'spectrogram'));
   if (spFitBtn) spFitBtn.addEventListener('click', () => visualizer.resetZoom('spectrogram'));
-
-  /* =========================================================================
-   * VISUALIZATION SETTINGS
-   * ========================================================================= */
 
   channelModeSelect.addEventListener('change', async e => {
     visualizer.channelMode = e.target.value;
@@ -507,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   fftSizeSelect.addEventListener('change', async e => {
     visualizer.fftSize = parseInt(e.target.value, 10);
-    showProgress(`Recomputing STFT with FFT size ${visualizer.fftSize}...`, 0.2);
+    showProgress(`Recomputing STFT (FFT ${visualizer.fftSize})...`, 0.2);
     await visualizer.computeSpectrogram(ratio => showProgress(`Computing STFT (${Math.round(ratio * 100)}%)...`, ratio));
     visualizer.render();
     hideProgress();
@@ -549,10 +493,6 @@ document.addEventListener('DOMContentLoaded', () => {
     visualizer._updateParameters();
   });
 
-  /* =========================================================================
-   * EXPORT BUTTONS
-   * ========================================================================= */
-
   function triggerDownload(dataUrl, filename) {
     const link = document.createElement('a');
     link.download = filename;
@@ -577,12 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
     triggerDownload(dataUrl, `audio_analysis_report_${Date.now()}.png`);
   });
 
-  /* =========================================================================
-   * KEYBOARD SHORTCUTS
-   * ========================================================================= */
-
   window.addEventListener('keydown', e => {
-    // Avoid interfering with inputs/selects
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
 
     switch (e.code) {
@@ -618,10 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* =========================================================================
-   * PROGRESS OVERLAY HELPERS
-   * ========================================================================= */
-
   let progressSafetyTimer = null;
 
   function showProgress(text, ratio = 0) {
@@ -630,7 +561,6 @@ document.addEventListener('DOMContentLoaded', () => {
     progressText.textContent = text;
     progressBar.style.width = `${Math.min(100, Math.max(0, ratio * 100))}%`;
 
-    // Safety timeout: automatically dismiss if any task unexpectedly hangs
     progressSafetyTimer = setTimeout(() => {
       hideProgress();
     }, 10000);
@@ -650,7 +580,6 @@ document.addEventListener('DOMContentLoaded', () => {
     closeProgressBtn.addEventListener('click', hideProgress);
   }
 
-  // Allow clicking overlay backdrop or pressing Escape to dismiss
   progressOverlay.addEventListener('click', e => {
     if (e.target === progressOverlay) hideProgress();
   });

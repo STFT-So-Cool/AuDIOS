@@ -1,18 +1,11 @@
-/**
- * Audio Manager: Handles Web Audio Context, file decoding, playback,
- * audio metadata extraction, live analysis, and synthesized audio generation.
- */
-
 class AudioManager {
   constructor() {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
     this.ctx = null;
     this.audioBuffer = null;
     this.sourceNode = null;
     this.gainNode = null;
     this.analyserNode = null;
 
-    // Playback state
     this.isPlaying = false;
     this.playbackStartTime = 0;
     this.playbackOffset = 0;
@@ -21,22 +14,12 @@ class AudioManager {
     this.isMuted = false;
     this.isLooping = false;
 
-    // Track metadata
     this.metadata = null;
-
-    // Callbacks
     this.onPlaybackUpdate = null;
     this.onPlaybackEnded = null;
-
-    // Animation frame for tracking playback
     this._rafId = null;
   }
 
-  /**
-   * Initializes the AudioContext if not already created.
-   * Note: Does NOT await resume() here so it never blocks or hangs Chrome's autoplay policy.
-   * Resuming is only performed upon explicit playback gesture.
-   */
   ensureAudioContext() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -55,9 +38,6 @@ class AudioManager {
     return this.ctx;
   }
 
-  /**
-   * Loads and decodes an audio file from a File or Blob object.
-   */
   async loadFromFile(file) {
     this.ensureAudioContext();
     this.stop();
@@ -67,18 +47,12 @@ class AudioManager {
     return this._setAudioBuffer(audioBuffer, file.name, file.size);
   }
 
-  /**
-   * Loads an AudioBuffer directly (used by synthesizers).
-   */
   async loadAudioBuffer(audioBuffer, name = 'Synthesized Audio') {
     this.ensureAudioContext();
     this.stop();
     return this._setAudioBuffer(audioBuffer, name, audioBuffer.length * 4);
   }
 
-  /**
-   * Sets the active audio buffer and calculates statistics and metadata.
-   */
   _setAudioBuffer(audioBuffer, name, sizeInBytes) {
     this.audioBuffer = audioBuffer;
     this.playbackOffset = 0;
@@ -88,7 +62,6 @@ class AudioManager {
     const duration = audioBuffer.duration;
     const length = audioBuffer.length;
 
-    // Compute peak amplitude, min/max values, RMS, and mixed mono channel
     let peak = 0;
     let maxVal = -Infinity;
     let minVal = Infinity;
@@ -97,7 +70,6 @@ class AudioManager {
     const ch0 = audioBuffer.getChannelData(0);
     const hasStereo = numChannels > 1;
     const ch1 = hasStereo ? audioBuffer.getChannelData(1) : null;
-
     const monoData = new Float32Array(length);
 
     for (let i = 0; i < length; i++) {
@@ -148,10 +120,6 @@ class AudioManager {
     return this.metadata;
   }
 
-  /**
-   * Gets the audio channel data according to the selected mode:
-   * 'mono', 'left', 'right', or 'stereo'
-   */
   getChannelData(mode = 'mono') {
     if (!this.metadata) return null;
 
@@ -164,9 +132,6 @@ class AudioManager {
     }
   }
 
-  /**
-   * Starts or resumes audio playback.
-   */
   async play() {
     if (!this.audioBuffer) return;
     await this.ensureAudioContext();
@@ -205,9 +170,6 @@ class AudioManager {
     this._startTracking();
   }
 
-  /**
-   * Pauses audio playback, retaining the current offset.
-   */
   pause() {
     if (!this.isPlaying) return;
 
@@ -221,9 +183,6 @@ class AudioManager {
     }
   }
 
-  /**
-   * Stops playback and resets the position to 0.
-   */
   stop() {
     this._stopSourceNode();
     this.isPlaying = false;
@@ -235,9 +194,6 @@ class AudioManager {
     }
   }
 
-  /**
-   * Seeks to a specific timestamp in seconds.
-   */
   seek(targetTime) {
     if (!this.audioBuffer) return;
 
@@ -257,9 +213,6 @@ class AudioManager {
     }
   }
 
-  /**
-   * Returns current playback time in seconds.
-   */
   getCurrentTime() {
     if (!this.isPlaying) {
       return this.playbackOffset;
@@ -275,9 +228,6 @@ class AudioManager {
     return time;
   }
 
-  /**
-   * Sets playback volume (0.0 to 1.0).
-   */
   setVolume(val) {
     this.volume = Math.max(0, Math.min(1, val));
     if (this.gainNode && !this.isMuted) {
@@ -285,9 +235,6 @@ class AudioManager {
     }
   }
 
-  /**
-   * Toggles mute state.
-   */
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.gainNode) {
@@ -297,13 +244,9 @@ class AudioManager {
     return this.isMuted;
   }
 
-  /**
-   * Sets playback speed multiplier (e.g. 0.5, 1.0, 1.5, 2.0).
-   */
   setPlaybackRate(rate) {
     this.playbackRate = Math.max(0.25, Math.min(4.0, rate));
     if (this.isPlaying) {
-      // Re-anchor start time to avoid sudden position jump
       this.playbackOffset = this.getCurrentTime();
       this.playbackStartTime = this.ctx.currentTime;
       if (this.sourceNode) {
@@ -312,9 +255,6 @@ class AudioManager {
     }
   }
 
-  /**
-   * Toggles loop mode.
-   */
   setLoop(loop) {
     this.isLooping = Boolean(loop);
     if (this.sourceNode) {
@@ -322,25 +262,17 @@ class AudioManager {
     }
   }
 
-  /**
-   * Internal source node cleanup.
-   */
   _stopSourceNode() {
     if (this.sourceNode) {
       try {
         this.sourceNode.onended = null;
         this.sourceNode.stop();
         this.sourceNode.disconnect();
-      } catch (err) {
-        // ignore already stopped node errors
-      }
+      } catch (err) {}
       this.sourceNode = null;
     }
   }
 
-  /**
-   * Starts tracking requestAnimationFrame loop for real-time playhead updates.
-   */
   _startTracking() {
     this._stopTracking();
     const update = () => {
@@ -362,9 +294,6 @@ class AudioManager {
     }
   }
 
-  /**
-   * Returns real-time time domain & frequency data from the AnalyserNode for live visualization.
-   */
   getLiveAnalysisData() {
     if (!this.analyserNode) return null;
 
@@ -378,29 +307,19 @@ class AudioManager {
     return { timeData, freqData, sampleRate: this.ctx ? this.ctx.sampleRate : 44100 };
   }
 
-  /* =========================================================================
-   * SYNTHESIZED SAMPLE AUDIO GENERATORS
-   * ========================================================================= */
-
-  /**
-   * 1. Logarithmic Chirp / Sine Sweep (20 Hz -> 20,000 Hz)
-   * The gold-standard diagnostic audio signal for spectrogram verification.
-   */
   generateChirp(duration = 4.0, sampleRate = 44100) {
     const ctx = this.ensureAudioContext();
     const length = Math.floor(duration * sampleRate);
     const buffer = ctx.createBuffer(1, length, sampleRate);
     const data = buffer.getChannelData(0);
 
-    const f0 = 25.0; // Starting frequency in Hz
-    const f1 = 18000.0; // Ending frequency in Hz
+    const f0 = 25.0;
+    const f1 = 18000.0;
     const k = Math.pow(f1 / f0, 1.0 / duration);
 
     for (let i = 0; i < length; i++) {
       const t = i / sampleRate;
-      // Instantaneous phase for logarithmic sweep:
       const phase = (2 * Math.PI * f0 * (Math.pow(k, t) - 1)) / Math.log(k);
-      // Gentle fade in/out envelope to avoid click transients
       let env = 1.0;
       if (t < 0.05) env = t / 0.05;
       if (t > duration - 0.05) env = (duration - t) / 0.05;
@@ -411,10 +330,6 @@ class AudioManager {
     return this.loadAudioBuffer(buffer, 'Logarithmic Chirp (25Hz - 18kHz)');
   }
 
-  /**
-   * 2. Harmonic Musical Chord (C Major Triad with overtones)
-   * Showcases distinct harmonic frequency lines on the spectrogram.
-   */
   generateMusicalChord(duration = 4.0, sampleRate = 44100) {
     const ctx = this.ensureAudioContext();
     const length = Math.floor(duration * sampleRate);
@@ -422,7 +337,6 @@ class AudioManager {
     const left = buffer.getChannelData(0);
     const right = buffer.getChannelData(1);
 
-    // Notes: C4, E4, G4, B4, C5
     const notes = [261.63, 329.63, 392.0, 493.88, 523.25];
     const harmonics = [1.0, 0.5, 0.25, 0.12];
 
@@ -431,11 +345,9 @@ class AudioManager {
       let leftSample = 0;
       let rightSample = 0;
 
-      // ADSR envelope: quick attack, natural exponential decay
       const env = Math.exp(-0.75 * t) * (t < 0.02 ? t / 0.02 : 1.0);
 
       notes.forEach((freq, nIdx) => {
-        // Vibrato modulation (5 Hz LFO)
         const vibrato = 1.0 + 0.003 * Math.sin(2 * Math.PI * 5 * t);
         const actualFreq = freq * vibrato;
 
@@ -445,8 +357,7 @@ class AudioManager {
           noteTone += hGain * Math.sin(2 * Math.PI * hFreq * t);
         });
 
-        // Stereo panning spread
-        const pan = (nIdx / (notes.length - 1)) * 2 - 1; // -1 to +1
+        const pan = (nIdx / (notes.length - 1)) * 2 - 1;
         const leftPan = Math.cos(((pan + 1) * Math.PI) / 4);
         const rightPan = Math.sin(((pan + 1) * Math.PI) / 4);
 
@@ -461,13 +372,8 @@ class AudioManager {
     return this.loadAudioBuffer(buffer, 'Harmonic Chord (C-Major Overtones)');
   }
 
-  /**
-   * 3. DTMF Dial Tones (Sequence of dual-frequency phone tones)
-   * Showcases clean discrete two-tone frequency pairs.
-   */
   generateDTMF(sampleRate = 44100) {
     const ctx = this.ensureAudioContext();
-    // Key pairs: [lowFreq, highFreq, label]
     const dtmfKeys = [
       { low: 697, high: 1209, key: '1' },
       { low: 697, high: 1477, key: '3' },
@@ -490,7 +396,6 @@ class AudioManager {
       const toneSamples = Math.floor(toneDuration * sampleRate);
       for (let i = 0; i < toneSamples; i++) {
         const t = i / sampleRate;
-        // Smooth 5ms envelope at edge
         let env = 1.0;
         if (t < 0.008) env = t / 0.008;
         if (t > toneDuration - 0.008) env = (toneDuration - t) / 0.008;
@@ -505,17 +410,12 @@ class AudioManager {
     return this.loadAudioBuffer(buffer, 'DTMF Phone Dial Tones (1-3-5-7-9-0)');
   }
 
-  /**
-   * 4. Drum Rhythm Pattern (Kick, Snare, Hi-Hats)
-   * Demonstrates transient broadband clicks and low frequency energy bursts.
-   */
   generatePercussion(duration = 3.5, sampleRate = 44100) {
     const ctx = this.ensureAudioContext();
     const length = Math.floor(duration * sampleRate);
     const buffer = ctx.createBuffer(1, length, sampleRate);
     const data = buffer.getChannelData(0);
 
-    // Tempo: 120 BPM => 0.5s per beat
     const beatSec = 0.5;
     const numBeats = Math.floor(duration / beatSec);
 
@@ -523,32 +423,26 @@ class AudioManager {
       const beatTime = beat * beatSec;
       const beatSample = Math.floor(beatTime * sampleRate);
 
-      // Kick on beats 0, 2, 4, 6
       if (beat % 2 === 0) {
         const kickLen = Math.floor(0.28 * sampleRate);
         for (let i = 0; i < kickLen && beatSample + i < length; i++) {
           const t = i / sampleRate;
-          // Pitch drop from 160Hz to 35Hz
-          const freq = 35 + 125 * Math.exp(-28 * t);
           const phase = 2 * Math.PI * (35 * t + (125 / -28) * (Math.exp(-28 * t) - 1));
           const env = Math.exp(-12 * t);
           data[beatSample + i] += 0.85 * Math.sin(phase) * env;
         }
       }
 
-      // Snare on beats 1, 3, 5
       if (beat % 2 === 1) {
         const snareLen = Math.floor(0.25 * sampleRate);
         for (let i = 0; i < snareLen && beatSample + i < length; i++) {
           const t = i / sampleRate;
-          // Tone component (180Hz) + broadband white noise
           const tone = Math.sin(2 * Math.PI * 180 * t) * Math.exp(-20 * t);
           const noise = (Math.random() * 2 - 1) * Math.exp(-15 * t);
           data[beatSample + i] += 0.65 * (tone * 0.4 + noise * 0.6);
         }
       }
 
-      // Hi-Hats on every eighth note
       const hihatTimes = [beatTime, beatTime + 0.25];
       hihatTimes.forEach(hTime => {
         const hSample = Math.floor(hTime * sampleRate);
@@ -556,7 +450,6 @@ class AudioManager {
         let lastNoise = 0;
         for (let i = 0; i < hLen && hSample + i < length; i++) {
           const t = i / sampleRate;
-          // High-pass filtered noise
           const raw = Math.random() * 2 - 1;
           const hpNoise = raw - lastNoise * 0.85;
           lastNoise = raw;
@@ -566,7 +459,6 @@ class AudioManager {
       });
     }
 
-    // Normalize slightly to prevent clipping
     let max = 0;
     for (let i = 0; i < length; i++) {
       if (Math.abs(data[i]) > max) max = Math.abs(data[i]);

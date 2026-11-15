@@ -221,10 +221,6 @@ class AudioVisualizer {
     this.render();
   }
 
-  /* =========================================================================
-   * ZOOM & PAN METHODS
-   * ========================================================================= */
-
   zoom(factor, centerFrac = 0.5, target = null) {
     if (this.duration <= 0) return;
     const tgt = target || this.activeTarget || 'waveform';
@@ -326,10 +322,6 @@ class AudioVisualizer {
     }
     this.render();
   }
-
-  /* =========================================================================
-   * DATA LOADING & RECOMPUTATION
-   * ========================================================================= */
 
   async loadAudio(onProgress = null) {
     const meta = this.audioManager.metadata;
@@ -442,10 +434,6 @@ class AudioVisualizer {
     this.offscreenScaleType = this.spectrogramScale;
     this.offscreenColormap = this.spectrogramColormap;
   }
-
-  /* =========================================================================
-   * RENDERING PIPELINE
-   * ========================================================================= */
 
   render() {
     this._resizeCanvases();

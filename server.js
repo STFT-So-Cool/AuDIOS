@@ -56,11 +56,6 @@ async function getCurrentUser(req) {
   return { username: session.username, userId: session.userId };
 }
 
-/* =========================================================================
-   AUTH API ROUTES
-   ========================================================================= */
-
-// 1. Sign Up
 app.post('/api/signup', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -124,7 +119,6 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
-// 2. Log In
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -174,7 +168,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// 3. Current User Check
 app.get('/api/me', async (req, res) => {
   try {
     const user = await getCurrentUser(req);
@@ -187,7 +180,6 @@ app.get('/api/me', async (req, res) => {
   }
 });
 
-// 4. Log Out
 app.post('/api/logout', async (req, res) => {
   try {
     const token = req.cookies.auth_token;
