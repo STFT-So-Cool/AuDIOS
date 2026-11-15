@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AudioPulse — Waveform & Spectrogram Analyzer</title>
+  <meta name="description" content="Browser-based audio analyzer featuring synchronized waveform and STFT spectrogram plots with zoom, pan, hover probes, and export features.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 10v3" />
+            <path d="M6 6v11" />
+            <path d="M10 3v18" />
+            <path d="M14 8v7" />
+            <path d="M18 5v13" />
+            <path d="M22 10v3" />
+          </svg>git
+        </div>
+        <div>
+          <h1 class="brand-title">AudioPulse</h1>
+          <p class="brand-subtitle">Audio Waveform & Spectrogram Analyzer</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="userProfileBar" style="display: none;">
+          <svg class="icon user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span class="user-label">Signed in as <strong id="loggedInUsername">User</strong></span>
+          <button type="button" id="logoutBtn" class="btn-logout">Log Out</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- File Input & Drop Zone -->
+    <section class="input-section" aria-label="Audio Input Options">
+      <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Drop audio file or click to select">
+        <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" style="display: none;" aria-hidden="true">
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        <p class="drop-primary-text">Drag and drop audio file, or click to browse</p>
+        <p class="drop-subtext">WAV, MP3, OGG, FLAC, AAC, M4A</p>
+        <button type="button" id="browseBtn" class="btn-browse">Browse Files</button>
+      </div>
+
+      <!-- Quick Sample Signals -->
+      <div class="samples-bar" aria-label="Demo Audio Signals">
+        <span class="samples-label">Demo Signals:</span>
+        <button type="button" id="sampleChirp" class="btn-pill" title="Logarithmic sweep showing diagonal frequency line">
+          Chirp Sweep (25 Hz – 18 kHz)
+        </button>
+        <button type="button" id="sampleChord" class="btn-pill" title="Harmonic triad displaying overtone frequency lines">
+          Harmonic Chord (C Major)
+        </button>
+        <button type="button" id="sampleDTMF" class="btn-pill" title="Dual-tone multi-frequency telephone tones">
+          DTMF Tones
+        </button>
+        <button type="button" id="samplePercussion" class="btn-pill" title="Kick, snare, hi-hat rhythm pattern">
+          Drum Transients
+        </button>
+        <button type="button" id="micRecordBtn" class="btn-pill btn-mic" title="Record directly from your microphone">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+          Record Mic
+        </button>
+      </div>
+    </section>
+
+    <!-- Metadata Strip -->
+    <section id="metaContainer" class="meta-strip hidden" aria-label="Audio Signal Information">
+      <div class="meta-item">
+        <span class="meta-title">File / Source</span>
+        <span id="metaFileName" class="meta-value">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-title">Duration</span>
+        <span id="metaDuration" class="meta-value">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-title">Sample Rate</span>
+        <span id="metaSampleRate" class="meta-value">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-title">Channels</span>
+        <span id="metaChannels" class="meta-value">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-title">Peak Amplitude</span>
+        <span id="metaPeak" class="meta-value">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-title">Minimum Value</span>
+        <span id="metaMin" class="meta-value">—</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-title">RMS Energy</span>
+        <span id="metaRms" class="meta-value">—</span>
+      </div>
+    </section>
+
+    <!-- Transport & Playback Control Bar -->
+    <nav class="transport-bar" aria-label="Playback and Navigation Controls">
+      <!-- Playback Controls -->
+      <div class="transport-group">
+        <button type="button" id="playPauseBtn" class="btn-icon btn-play" aria-label="Play audio" title="Play / Pause (Space)" disabled>
+          <svg id="playIcon" class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="6 3 20 12 6 21 6 3" />
+          </svg>
+          <svg id="pauseIcon" class="icon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+            <rect x="6" y="4" width="4" height="16" rx="1" />
+            <rect x="14" y="4" width="4" height="16" rx="1" />
+          </svg>
+        </button>
+        <button type="button" id="stopBtn" class="btn-icon" aria-label="Stop playback" title="Stop" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="1" />
+          </svg>
+        </button>
+        <button type="button" id="loopBtn" class="btn-icon" aria-label="Toggle loop" title="Toggle Loop" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m17 2 4 4-4 4"/>
+            <path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
+            <path d="m7 22-4-4 4-4"/>
+            <path d="M21 13v1a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </button>
+        <div id="timeDisplay" class="time-counter" aria-live="off">00:00.00 / 00:00.00</div>
+      </div>
+
+      <!-- Volume & Rate Controls -->
+      <div class="transport-group">
+        <button type="button" id="muteBtn" class="btn-icon" aria-label="Toggle mute" title="Mute (M)">
+          <svg id="muteIcon" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+          </svg>
+        </button>
+        <div class="slider-container">
+          <label for="volumeSlider" class="visually-hidden" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);">Volume</label>
+          <input type="range" id="volumeSlider" class="styled-slider" min="0" max="1" step="0.01" value="1" title="Volume">
+        </div>
+
+        <label for="playbackSpeed" class="visually-hidden" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);">Playback Speed</label>
+        <select id="playbackSpeed" class="styled-select" title="Playback Speed">
+          <option value="0.5">0.5x Speed</option>
+          <option value="0.75">0.75x Speed</option>
+          <option value="1.0" selected>1.0x Normal</option>
+          <option value="1.25">1.25x Speed</option>
+          <option value="1.5">1.5x Speed</option>
+          <option value="2.0">2.0x Speed</option>
+        </select>
+      </div>
+
+      <!-- Zoom & Viewport Controls -->
+      <div class="transport-group">
+        <button type="button" id="zoomInBtn" class="btn-icon" aria-label="Zoom in" title="Zoom In (+)" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="11" y1="8" x2="11" y2="14"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </button>
+        <button type="button" id="zoomOutBtn" class="btn-icon" aria-label="Zoom out" title="Zoom Out (-)" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </button>
+        <button type="button" id="fitZoomBtn" class="btn-icon" aria-label="Fit full audio in view" title="Reset / Fit View (F)" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 3 21 3 21 9"/>
+            <polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/>
+            <line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Visualizer Workspace -->
+    <main class="visualizer-workspace">
+      <!-- 1. Waveform Panel -->
+      <article class="panel-card" aria-label="Audio Waveform Display">
+        <header class="panel-header">
+          <div class="panel-title-wrapper">
+            <h2 class="panel-title">Waveform</h2>
+            <span class="panel-subtitle">Time Domain</span>
+          </div>
+          <div class="panel-controls">
+            <div class="control-item">
+              <label for="channelModeSelect">Channel:</label>
+              <select id="channelModeSelect" class="styled-select">
+                <option value="mono" selected>Mixed Mono</option>
+                <option value="stereo">Split Stereo (L / R)</option>
+                <option value="left">Left Channel Only</option>
+                <option value="right">Right Channel Only</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <label for="waveformThemeSelect">Theme:</label>
+              <select id="waveformThemeSelect" class="styled-select">
+                <option value="cyan" selected>Cyan</option>
+                <option value="amber">Amber</option>
+                <option value="emerald">Green</option>
+                <option value="sunset">Purple</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <button type="button" id="wfZoomInBtn" class="btn-icon" title="Zoom In Waveform" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+              </button>
+              <button type="button" id="wfZoomOutBtn" class="btn-icon" title="Zoom Out Waveform" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+              </button>
+              <button type="button" id="wfFitBtn" class="btn-icon" title="Fit Waveform" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                  <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+        <!-- Waveform Signal Parameters -->
+        <div class="panel-param-bar" id="waveformParamBar" aria-label="Waveform Signal Parameters">
+          <div class="param-badge" title="Maximum positive amplitude value in signal/view">
+            <span class="param-label">Max Amp:</span>
+            <span class="param-val" id="wfParamMax">—</span>
+          </div>
+          <div class="param-badge" title="Minimum negative sample value in signal/view">
+            <span class="param-label">Min Val:</span>
+            <span class="param-val" id="wfParamMin">—</span>
+          </div>
+          <div class="param-badge" title="Peak-to-Peak amplitude difference (Max - Min)">
+            <span class="param-label">Peak-to-Peak:</span>
+            <span class="param-val" id="wfParamVpp">—</span>
+          </div>
+          <div class="param-badge" title="Estimated fundamental frequency (f₀)">
+            <span class="param-label">Est. Frequency:</span>
+            <span class="param-val" id="wfParamFreq">—</span>
+          </div>
+          <div class="param-badge" title="Time period of one complete wave cycle (T = 1/f₀)">
+            <span class="param-label">Time Period (T):</span>
+            <span class="param-val" id="wfParamPeriod">—</span>
+          </div>
+          <div class="param-badge" title="Root Mean Square (RMS) energy level">
+            <span class="param-label">RMS Level:</span>
+            <span class="param-val" id="wfParamRms">—</span>
+          </div>
+        </div>
+        <div class="canvas-viewport waveform-viewport">
+          <canvas id="waveformCanvas" class="display-canvas" aria-label="Waveform Canvas"></canvas>
+        </div>
+        <!-- Synchronized Waveform Time Ruler -->
+        <div class="canvas-viewport time-axis-viewport">
+          <canvas id="waveformTimeAxisCanvas" class="display-canvas" aria-label="Waveform Time Ruler Axis"></canvas>
+        </div>
+      </article>
+
+      <!-- 2. Spectrogram Panel -->
+      <article class="panel-card" aria-label="Audio Spectrogram Display">
+        <header class="panel-header">
+          <div class="panel-title-wrapper">
+            <h2 class="panel-title">Spectrogram</h2>
+            <span class="panel-subtitle">Frequency Domain (STFT)</span>
+          </div>
+          <div class="panel-controls">
+            <div class="control-item">
+              <label for="scaleSelect">Scale:</label>
+              <select id="scaleSelect" class="styled-select">
+                <option value="linear" selected>Linear (Hz)</option>
+                <option value="log">Logarithmic</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <label for="colormapSelect">Palette:</label>
+              <select id="colormapSelect" class="styled-select">
+                <option value="viridis" selected>Viridis</option>
+                <option value="magma">Magma</option>
+                <option value="plasma">Plasma</option>
+                <option value="inferno">Inferno</option>
+                <option value="turbo">Turbo</option>
+                <option value="electric">Cyan</option>
+                <option value="matrix">Green</option>
+                <option value="grayscale">Grayscale</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <label for="fftSizeSelect">FFT Size:</label>
+              <select id="fftSizeSelect" class="styled-select">
+                <option value="512">512</option>
+                <option value="1024" selected>1024</option>
+                <option value="2048">2048</option>
+                <option value="4096">4096</option>
+              </select>
+            </div>
+            <div class="control-item">
+              <label for="windowTypeSelect">Window:</label>
+              <select id="windowTypeSelect" class="styled-select">
+                <option value="hann" selected>Hann</option>
+                <option value="hamming">Hamming</option>
+                <option value="blackman">Blackman</option>
+                <option value="rectangular">Rectangular</option>
+              </select>
+            </div>
+            <div class="control-item" title="Minimum decibel threshold for colormap floor">
+              <label for="minDbSlider">Min dB:</label>
+              <input type="range" id="minDbSlider" class="styled-slider" min="-120" max="-20" step="5" value="-80" style="width: 70px;">
+              <span id="minDbVal" style="font-family: var(--font-mono); font-size: 0.75rem;">-80 dB</span>
+            </div>
+            <div class="control-item" title="Maximum decibel threshold for colormap ceiling">
+              <label for="maxDbSlider">Max dB:</label>
+              <input type="range" id="maxDbSlider" class="styled-slider" min="-30" max="0" step="1" value="0" style="width: 60px;">
+              <span id="maxDbVal" style="font-family: var(--font-mono); font-size: 0.75rem;">0 dB</span>
+            </div>
+            <div class="control-item">
+              <button type="button" id="spZoomInBtn" class="btn-icon" title="Zoom In Spectrogram" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+              </button>
+              <button type="button" id="spZoomOutBtn" class="btn-icon" title="Zoom Out Spectrogram" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+              </button>
+              <button type="button" id="spFitBtn" class="btn-icon" title="Fit Spectrogram" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                  <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+        <!-- Spectrogram Spectral Parameters -->
+        <div class="panel-param-bar" id="spectrogramParamBar" aria-label="Spectrogram Spectral Parameters">
+          <div class="param-badge" title="Frequency with peak spectral energy in signal/view">
+            <span class="param-label">Peak Freq:</span>
+            <span class="param-val" id="spParamPeakFreq">—</span>
+          </div>
+          <div class="param-badge" title="Time period corresponding to peak frequency (T = 1/f)">
+            <span class="param-label">Time Period (T):</span>
+            <span class="param-val" id="spParamPeriod">—</span>
+          </div>
+          <div class="param-badge" title="Analyzed frequency bandwidth (0 to Nyquist)">
+            <span class="param-label">Freq Range:</span>
+            <span class="param-val" id="spParamFreqRange">—</span>
+          </div>
+          <div class="param-badge" title="Frequency bin resolution (Δf = fs / N)">
+            <span class="param-label">Resolution (Δf):</span>
+            <span class="param-val" id="spParamFreqRes">—</span>
+          </div>
+          <div class="param-badge" title="Time window hop duration (Δt = hop / fs)">
+            <span class="param-label">Time Res (Δt):</span>
+            <span class="param-val" id="spParamTimeRes">—</span>
+          </div>
+          <div class="param-badge" title="Colormap threshold dynamic range">
+            <span class="param-label">Dynamic Range:</span>
+            <span class="param-val" id="spParamDynRange">—</span>
+          </div>
+        </div>
+        <div class="canvas-viewport spectrogram-viewport">
+          <canvas id="spectrogramCanvas" class="display-canvas" aria-label="Spectrogram Canvas"></canvas>
+        </div>
+        <!-- Synchronized Time Ruler -->
+        <div class="canvas-viewport time-axis-viewport">
+          <canvas id="timeAxisCanvas" class="display-canvas" aria-label="Time Ruler Axis"></canvas>
+        </div>
+        <!-- Live Real-Time Spectrum Meter -->
+        <div class="canvas-viewport live-meter-viewport" title="Real-time live FFT output during playback">
+          <canvas id="liveMeterCanvas" class="display-canvas" aria-label="Live Real-time Spectrum Meter"></canvas>
+        </div>
+      </article>
+    </main>
+
+    <!-- Bottom Actions & Export Bar -->
+    <footer class="action-bar">
+      <div class="shortcuts-hint">
+        <span>Controls:</span>
+        <span><kbd>Space</kbd> Play/Pause</span>
+        <span><kbd>Click/Drag</kbd> Seek</span>
+        <span><kbd>Shift+Drag</kbd> Pan</span>
+        <span><kbd>Wheel</kbd> / <kbd>+</kbd><kbd>-</kbd> Zoom</span>
+        <span><kbd>F</kbd> Fit</span>
+        <span><kbd>M</kbd> Mute</span>
+      </div>
+      <div class="btn-group">
+        <button type="button" id="exportWaveformBtn" class="btn-action" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export Waveform (PNG)
+        </button>
+        <button type="button" id="exportSpectrogramBtn" class="btn-action" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export Spectrogram (PNG)
+        </button>
+        <button type="button" id="exportReportBtn" class="btn-action btn-primary" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+            <path d="M3 9h18"/>
+            <path d="M9 21V9"/>
+          </svg>
+          Export Combined Report
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Interactive Hover Probe Tooltip -->
+  <div id="probeTooltip" class="probe-tooltip" role="tooltip" aria-hidden="true"></div>
+
+  <!-- Progress / STFT Processing Overlay -->
+  <div id="progressOverlay" class="progress-overlay hidden" role="dialog" aria-modal="true" aria-live="assertive">
+    <div class="progress-card">
+      <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="progress-title">Processing Audio</h3>
+        <button type="button" id="closeProgressBtn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.4rem; line-height: 1; padding: 2px 6px;" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="progress-bar-track">
+        <div id="progressBar" class="progress-bar-fill"></div>
+      </div>
+      <p id="progressText" class="progress-text">Analyzing signal...</p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/fft.js"></script>
+  <script src="js/audio-manager.js"></script>
+  <script src="js/visualizer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "aiml2",
+  "version": "1.0.0",
+  "description": "An interactive, high-performance web application designed for audio analysis, featuring synchronized **Waveform** and **STFT Spectrogram** plots, full playback controls, zoom/pan navigation, real-time frequency inspection, and export options.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.3.0",
+    "mongodb": "^7.8.0"
+  }
+}
