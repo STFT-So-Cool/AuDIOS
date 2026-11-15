@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AudioPulse Studio — Audio Waveform & Spectrogram Analyzer
 
 An interactive, high-performance web application designed for audio analysis, featuring synchronized **Waveform** and **STFT Spectrogram** plots, full playback controls, zoom/pan navigation, real-time frequency inspection, and export options.
@@ -77,3 +78,7 @@ Open `http://localhost:8080/index.html`.
 | `F` or `Escape` | Reset / Fit View |
 | `Left / Right Arrow` | Seek ±1 second |
 | `M` | Mute / Unmute |
+=======
+# AuDIOS
+This is a repo made by our team to demonstrate the implementation of two or three awesome papers on Audio source separation, also performing experiments and also building a website around the entire model,
+>>>>>>> 4323bfe11dc5ca13c656f1ba799da3753baa5585
