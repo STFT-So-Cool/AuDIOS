@@ -507,6 +507,38 @@ body {
   color: var(--text-secondary);
 }
 
+/* Panel Parameter Bar */
+.panel-param-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 6px 14px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.76rem;
+}
+
+.param-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.param-label {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.param-val {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
 .canvas-viewport {
   position: relative;
   width: 100%;
@@ -765,5 +797,13 @@ kbd {
   }
   .spectrogram-viewport {
     height: 220px;
+  }
+  .panel-param-bar {
+    gap: 4px 12px;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+  .param-val {
+    font-size: 0.76rem;
   }
 }

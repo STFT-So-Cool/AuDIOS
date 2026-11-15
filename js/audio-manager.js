@@ -88,8 +88,10 @@ class AudioManager {
     const duration = audioBuffer.duration;
     const length = audioBuffer.length;
 
-    // Compute peak amplitude, RMS, and mixed mono channel
+    // Compute peak amplitude, min/max values, RMS, and mixed mono channel
     let peak = 0;
+    let maxVal = -Infinity;
+    let minVal = Infinity;
     let sumSquares = 0;
 
     const ch0 = audioBuffer.getChannelData(0);
@@ -102,13 +104,24 @@ class AudioManager {
       const sample = hasStereo ? (ch0[i] + ch1[i]) * 0.5 : ch0[i];
       monoData[i] = sample;
 
+      if (sample > maxVal) maxVal = sample;
+      if (sample < minVal) minVal = sample;
+
       const abs = Math.abs(sample);
       if (abs > peak) peak = abs;
       sumSquares += sample * sample;
     }
 
+    if (length === 0) {
+      maxVal = 0;
+      minVal = 0;
+    }
+
     const rms = Math.sqrt(sumSquares / length);
+    const peakToPeak = maxVal - minVal;
     const peakDb = peak > 0 ? 20 * Math.log10(peak) : -100;
+    const maxValDb = Math.abs(maxVal) > 0 ? 20 * Math.log10(Math.abs(maxVal)) : -100;
+    const minValDb = Math.abs(minVal) > 0 ? 20 * Math.log10(Math.abs(minVal)) : -100;
     const rmsDb = rms > 0 ? 20 * Math.log10(rms) : -100;
 
     this.metadata = {
@@ -120,6 +133,11 @@ class AudioManager {
       length,
       peak,
       peakDb,
+      maxVal,
+      maxValDb,
+      minVal,
+      minValDb,
+      peakToPeak,
       rms,
       rmsDb,
       monoData,

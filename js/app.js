@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const audioManager = new AudioManager();
 
   const waveformCanvas = document.getElementById('waveformCanvas');
+  const waveformTimeAxisCanvas = document.getElementById('waveformTimeAxisCanvas');
   const spectrogramCanvas = document.getElementById('spectrogramCanvas');
   const timeAxisCanvas = document.getElementById('timeAxisCanvas');
   const liveMeterCanvas = document.getElementById('liveMeterCanvas');
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const visualizer = new AudioVisualizer({
     waveformCanvas,
+    waveformTimeAxisCanvas,
     spectrogramCanvas,
     timeAxisCanvas,
     liveMeterCanvas,
@@ -111,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const metaSampleRate = document.getElementById('metaSampleRate');
   const metaChannels = document.getElementById('metaChannels');
   const metaPeak = document.getElementById('metaPeak');
+  const metaMin = document.getElementById('metaMin');
   const metaRms = document.getElementById('metaRms');
 
   // State
@@ -307,6 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
     metaSampleRate.textContent = `${(meta.sampleRate / 1000).toFixed(1)} kHz`;
     metaChannels.textContent = meta.numberOfChannels === 1 ? '1 (Mono)' : `${meta.numberOfChannels} (Stereo)`;
     metaPeak.textContent = `${meta.peakDb.toFixed(1)} dBFS`;
+    if (metaMin && meta.minVal !== undefined) {
+      const minSign = meta.minVal > 0 ? '+' : '';
+      metaMin.textContent = `${minSign}${meta.minVal.toFixed(3)} (${meta.minValDb.toFixed(1)} dBFS)`;
+    }
     metaRms.textContent = `${meta.rmsDb.toFixed(1)} dBFS`;
 
     // Disable stereo option if audio is mono
@@ -336,6 +343,22 @@ document.addEventListener('DOMContentLoaded', () => {
     exportWaveformBtn.disabled = !enabled;
     exportSpectrogramBtn.disabled = !enabled;
     exportReportBtn.disabled = !enabled;
+
+    // Per-panel waveform zoom buttons
+    const wfZoomInBtn = document.getElementById('wfZoomInBtn');
+    const wfZoomOutBtn = document.getElementById('wfZoomOutBtn');
+    const wfFitBtn = document.getElementById('wfFitBtn');
+    if (wfZoomInBtn) wfZoomInBtn.disabled = !enabled;
+    if (wfZoomOutBtn) wfZoomOutBtn.disabled = !enabled;
+    if (wfFitBtn) wfFitBtn.disabled = !enabled;
+
+    // Per-panel spectrogram zoom buttons
+    const spZoomInBtn = document.getElementById('spZoomInBtn');
+    const spZoomOutBtn = document.getElementById('spZoomOutBtn');
+    const spFitBtn = document.getElementById('spFitBtn');
+    if (spZoomInBtn) spZoomInBtn.disabled = !enabled;
+    if (spZoomOutBtn) spZoomOutBtn.disabled = !enabled;
+    if (spFitBtn) spFitBtn.disabled = !enabled;
   }
 
   /* =========================================================================
@@ -439,6 +462,22 @@ document.addEventListener('DOMContentLoaded', () => {
   zoomOutBtn.addEventListener('click', () => visualizer.zoom(1.4, 0.5));
   fitZoomBtn.addEventListener('click', () => visualizer.resetZoom());
 
+  // Per-panel waveform zoom buttons
+  const wfZoomInBtn = document.getElementById('wfZoomInBtn');
+  const wfZoomOutBtn = document.getElementById('wfZoomOutBtn');
+  const wfFitBtn = document.getElementById('wfFitBtn');
+  if (wfZoomInBtn) wfZoomInBtn.addEventListener('click', () => visualizer.zoom(0.7, 0.5, 'waveform'));
+  if (wfZoomOutBtn) wfZoomOutBtn.addEventListener('click', () => visualizer.zoom(1.4, 0.5, 'waveform'));
+  if (wfFitBtn) wfFitBtn.addEventListener('click', () => visualizer.resetZoom('waveform'));
+
+  // Per-panel spectrogram zoom buttons
+  const spZoomInBtn = document.getElementById('spZoomInBtn');
+  const spZoomOutBtn = document.getElementById('spZoomOutBtn');
+  const spFitBtn = document.getElementById('spFitBtn');
+  if (spZoomInBtn) spZoomInBtn.addEventListener('click', () => visualizer.zoom(0.7, 0.5, 'spectrogram'));
+  if (spZoomOutBtn) spZoomOutBtn.addEventListener('click', () => visualizer.zoom(1.4, 0.5, 'spectrogram'));
+  if (spFitBtn) spFitBtn.addEventListener('click', () => visualizer.resetZoom('spectrogram'));
+
   /* =========================================================================
    * VISUALIZATION SETTINGS
    * ========================================================================= */
@@ -490,8 +529,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     visualizer.minDb = val;
     minDbVal.textContent = `${val} dB`;
+    visualizer._lastParamKey = null;
     visualizer._buildOffscreenSpectrogram();
     visualizer.renderSpectrogram();
+    visualizer._updateParameters();
   });
 
   maxDbSlider.addEventListener('input', e => {
@@ -502,8 +543,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     visualizer.maxDb = val;
     maxDbVal.textContent = `${val} dB`;
+    visualizer._lastParamKey = null;
     visualizer._buildOffscreenSpectrogram();
     visualizer.renderSpectrogram();
+    visualizer._updateParameters();
   });
 
   /* =========================================================================
